@@ -113,8 +113,8 @@ parser.add_argument('--cls_n_hidden', type=int, default='512',
 parser.add_argument('--cls_dropout_probability', type=float, default=0.,
                     help='Dropout probability of the classifier, default is 0.')
 
-parser.add_argument('--cls_batch_size', type=int, default=1000,
-                    help='Classifier batch size, default is 1000.')
+parser.add_argument('--cls_batch_size', type=int, default=100,
+                    help='Classifier batch size, default is 100.')
 parser.add_argument('--cls_n_epochs', type=int, default=50,
                     help='Number of epochs to train classifier, default is 50.')
 parser.add_argument('--cls_lr', type=float, default=2e-4,
@@ -285,8 +285,11 @@ def train_cls(model, data_train, optim, epoch, arg):
             res_true = torch.cat((res_true, target), 0)
             res_pred = torch.cat((res_pred, pred), 0)
 
-    print("Accuracy on training set is",
-          accuracy_score(res_true.cpu(), res_pred.cpu()))
+    try:
+        print("Accuracy on training set is",
+          accuracy_score(res_true.cpu(), np.clip(res_pred.cpu(), 0., 1.0)))
+    except:
+        print("Nans")
 
 def evaluate_cls(model, data_test, arg, final_eval=False, calibration_data=None):
     """ evaluate on test set """
@@ -307,9 +310,16 @@ def evaluate_cls(model, data_test, arg, final_eval=False, calibration_data=None)
             result_true = torch.cat((result_true, target), 0)
             result_pred = torch.cat((result_pred, pred), 0)
     BCE = torch.nn.BCEWithLogitsLoss()(result_pred, result_true)
-    result_pred = torch.sigmoid(result_pred).cpu().numpy()
+    result_pred = torch.round(torch.sigmoid(result_pred)).cpu().numpy()
     result_true = result_true.cpu().numpy()
-    eval_acc = accuracy_score(result_true, np.round(result_pred))
+    result_pred = np.clip(np.round(result_pred), 0., 1.0)
+    #print(np.amin(result_pred), np.amax(result_pred), np.sum(np.isnan(result_pred)))
+    try:
+        eval_acc = accuracy_score(result_true, result_pred)
+    except:
+        print("Nans")
+        result_pred[np.isnan(result_pred)] = 0.5
+        eval_acc = accuracy_score(result_true, result_pred)
     print("Accuracy on test set is", eval_acc)
     eval_auc = roc_auc_score(result_true, result_pred)
     print("AUC on test set is", eval_auc)
@@ -321,7 +331,7 @@ def evaluate_cls(model, data_test, arg, final_eval=False, calibration_data=None)
         print("unrescaled calibration curve:", prob_true, prob_pred)
         calibrator = calibrate_classifier(model, calibration_data, arg)
         rescaled_pred = calibrator.predict(result_pred)
-        eval_acc = accuracy_score(result_true, np.round(rescaled_pred))
+        eval_acc = accuracy_score(result_true, np.clip(np.round(rescaled_pred), 0., 1.0))
         print("Rescaled accuracy is", eval_acc)
         eval_auc = roc_auc_score(result_true, rescaled_pred)
         print("rescaled AUC of dataset is", eval_auc)
