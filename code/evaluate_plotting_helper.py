@@ -10,6 +10,27 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+from matplotlib import rc
+rc('text', usetex=True)
+
+rc('font', family='serif')
+rc('font', size=22)
+rc('xtick', labelsize=15)
+rc('ytick', labelsize=15)
+rc('legend', fontsize=15)
+
+# #
+import matplotlib as mpl
+mpl.rcParams.update({'font.size': 19})
+#mpl.rcParams.update({'legend.fontsize': 18})
+mpl.rcParams['text.usetex'] = False
+mpl.rcParams.update({'xtick.labelsize': 18}) 
+mpl.rcParams.update({'ytick.labelsize': 18}) 
+mpl.rcParams.update({'axes.labelsize': 18}) 
+mpl.rcParams.update({'legend.frameon': False}) 
+mpl.rcParams.update({'lines.linewidth': 2})
+
+
 
 
 def plot_layer_comparison(hlf_class, data, reference_class, reference_data, arg, show=False):
@@ -70,7 +91,7 @@ def plot_Etot_Einc_discrete(hlf_class, reference_class, arg):
             energy_label = 'E = {:.1f} TeV'.format(energy/1e6)
         ax.text(0.95, 0.95, energy_label, ha='right', va='top',
                 transform=ax.transAxes)
-        ax.set_xlabel(r'$E_{\text{tot}} / E_{\text{inc}}$')
+        ax.set_xlabel(r'$E_{\mathrm{tot}} / E_{\mathrm{inc}}$')
         ax.xaxis.set_label_coords(1., -0.15)
         ax.set_ylabel('counts')
         ax.yaxis.set_ticklabels([])
@@ -102,7 +123,7 @@ def plot_Etot_Einc(hlf_class, reference_class, arg):
                                  label='generated', histtype='step', linewidth=3., alpha=1.,
                                  density=True)
     plt.xlim(0.5, 1.5)
-    plt.xlabel(r'$E_{\text{tot}} / E_{\text{inc}}$')
+    plt.xlabel(r'$E_{\mathrm{tot}} / E_{\mathrm{inc}}$')
     plt.legend(fontsize=20)
     plt.tight_layout()
     if arg.mode in ['all', 'hist-p', 'hist']:

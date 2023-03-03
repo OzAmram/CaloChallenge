@@ -52,10 +52,17 @@ from evaluate_plotting_helper import *
 
 torch.set_default_dtype(torch.float64)
 
-plt.rc('text', usetex=True)
-plt.rc('text.latex', preamble=r'\usepackage{amsmath,amssymb}')
-plt.rc('font', family='serif')
-
+#plt.rc('text', usetex=True)
+#plt.rc('text.latex', preamble=r'\usepackage{amsmath,amssymb}')
+#plt.rc('font', family='serif')
+#
+#
+#
+#plt.rcParams.update({
+#    "text.usetex": True,
+#    "font.family": "sans-serif",
+#    "font.sans-serif": ["Helvetica"]})
+#
 
 ########## Parser Setup ##########
 

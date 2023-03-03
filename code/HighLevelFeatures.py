@@ -100,7 +100,8 @@ class HighLevelFeatures:
         ax.grid(False)
         if vmax is None:
             vmax = data.max()
-        pcm = ax.pcolormesh(theta, rad, data_repeated.T+1e-16, norm=LN(vmin=1e-2, vmax=vmax))
+        vmin = 1e-2 if data.max() > 1e-3 else data.max()/100.
+        pcm = ax.pcolormesh(theta, rad, data_repeated.T+1e-16, norm=LN(vmin=vmin, vmax=vmax))
         ax.axes.get_xaxis().set_visible(False)
         ax.axes.get_yaxis().set_visible(False)
         if self.particle == 'electron':
@@ -116,7 +117,7 @@ class HighLevelFeatures:
                                bbox_transform=fig.get_axes()[-1].transAxes,
                                borderpad=0)
             cbar = plt.colorbar(pcm, cax=axins, fraction=0.2, orientation="horizontal")
-            cbar.set_label(r'Energy (MeV)', y=0.83, fontsize=12)
+            cbar.set_label(r'Energy (GeV)', y=0.83, fontsize=12)
         elif colbar == 'both':
             axins = inset_axes(fig.get_axes()[-1], width='200%',
                                height="15%", loc='lower center',
@@ -124,7 +125,7 @@ class HighLevelFeatures:
                                bbox_transform=fig.get_axes()[-1].transAxes,
                                borderpad=0)
             cbar = plt.colorbar(pcm, cax=axins, fraction=0.2, orientation="horizontal")
-            cbar.set_label(r'Energy (MeV)', y=0.83, fontsize=12)
+            cbar.set_label(r'Energy (GeV)', y=0.83, fontsize=12)
         elif colbar == 'None':
             pass
         #if title is not None:
@@ -134,6 +135,9 @@ class HighLevelFeatures:
         #return fig
 
     def _DrawShower(self, data, filename, title):
+        vmax = data.max()
+        vmin = 1e-3 if data.max() >= 1 else data.max()/1000.
+
         """ Draws the shower in all layers """
         if self.particle == 'electron':
             figsize = (10, 20)
@@ -147,7 +151,6 @@ class HighLevelFeatures:
         for radii in self.r_edges:
             if radii[-1] > max_r:
                 max_r = radii[-1]
-        vmax = data.max()
         for idx, layer in enumerate(self.relevantLayers):
             radii = np.array(self.r_edges[idx])
             if self.particle != 'electron':
@@ -162,7 +165,7 @@ class HighLevelFeatures:
             else:
                 ax = plt.subplot(1, len(self.r_edges), idx+1, polar=True)
             ax.grid(False)
-            pcm = ax.pcolormesh(theta, rad, data_repeated.T+1e-16, norm=LN(vmin=1e-2, vmax=vmax))
+            pcm = ax.pcolormesh(theta, rad, data_repeated.T+1e-16, norm=LN(vmin=vmin, vmax=vmax))
             ax.axes.get_xaxis().set_visible(False)
             ax.axes.get_yaxis().set_visible(False)
             if self.particle == 'electron':
@@ -182,7 +185,7 @@ class HighLevelFeatures:
                                bbox_transform=fig.get_axes()[len(self.r_edges)//2].transAxes,
                                borderpad=0)
         cbar = plt.colorbar(pcm, cax=axins, fraction=0.2, orientation="horizontal")
-        cbar.set_label(r'Energy (MeV)', y=0.83, fontsize=12)
+        cbar.set_label(r'Energy (GeV)', y=0.83, fontsize=12)
         if title is not None:
             plt.gcf().suptitle(title)
         if filename is not None:
