@@ -46,9 +46,13 @@ from sklearn.metrics import roc_auc_score
 from sklearn.calibration import calibration_curve
 from sklearn.isotonic import IsotonicRegression
 
+import jetnet
+
 import HighLevelFeatures as HLF
 
 from evaluate_plotting_helper import *
+
+plt_ext = "pdf"
 
 torch.set_default_dtype(torch.float64)
 
@@ -76,12 +80,14 @@ parser.add_argument('--reference_file', '-r',
                     'in the first run for faster runtime in subsequent runs.')
 parser.add_argument('--mode', '-m', default='all',
                     choices=['all', 'avg', 'avg-E', 'hist-p', 'hist-chi', 'hist',
-                             'cls-low', 'cls-low-normed', 'cls-high'],
+                             'cls-low', 'cls-low-normed', 'cls-high', 'fpd', 'kpd'],
                     help=("What metric to evaluate: " +\
                           "'avg' plots the shower average;" +\
                           "'avg-E' plots the shower average for energy ranges;" +\
                           "'hist-p' plots the histograms;" +\
                           "'hist-chi' evaluates a chi2 of the histograms;" +\
+                          "'fpd' measures the Frechet physics distance on the high-level features;" +\
+                          "'kpd' measures the Kernel physics distance on the high-level features;" +\
                           "'hist' evaluates a chi2 of the histograms and plots them;" +\
                           "'cls-low' trains a classifier on the low-level feautures;" +\
                           "'cls-low-normed' trains a classifier on the low-level feautures" +\
@@ -93,6 +99,8 @@ parser.add_argument('--dataset', '-d', choices=['1-photons', '1-pions', '2', '3'
                     help='Which dataset is evaluated.')
 parser.add_argument('--output_dir', default='evaluation_results/',
                     help='Where to store evaluation output files (plots and scores).')
+parser.add_argument('--ratio', default=False, action = 'store_true',
+                    help='Add ratio panel to plots')
 #parser.add_argument('--source_dir', default='source/',
 #                    help='Folder that contains (soft links to) files required for'+\
 #                    ' comparative evaluations (high level features stored in .pkl or '+\
@@ -108,15 +116,18 @@ parser.add_argument('--output_dir', default='evaluation_results/',
 
 parser.add_argument('--cls_n_layer', type=int, default=2,
                     help='Number of hidden layers in the classifier, default is 2.')
-parser.add_argument('--cls_n_hidden', type=int, default='512',
-                    help='Hidden nodes per layer of the classifier, default is 512.')
-parser.add_argument('--cls_dropout_probability', type=float, default=0.,
-                    help='Dropout probability of the classifier, default is 0.')
 
-parser.add_argument('--cls_batch_size', type=int, default=100,
-                    help='Classifier batch size, default is 100.')
+parser.add_argument('--cls_n_iters', type=int, default=1,
+                    help='Repeat n times')
+parser.add_argument('--cls_n_hidden', type=int, default='2048',
+                    help='Hidden nodes per layer of the classifier, default is 64')
+parser.add_argument('--cls_dropout_probability', type=float, default=0.2,
+                    help='Dropout probability of the classifier, default is 0.2')
+
+parser.add_argument('--cls_batch_size', type=int, default=200,
+                    help='Classifier batch size, default is 200.')
 parser.add_argument('--cls_n_epochs', type=int, default=50,
-                    help='Number of epochs to train classifier, default is 50.')
+                    help='Number of epochs to train classifier, default is 100.')
 parser.add_argument('--cls_lr', type=float, default=2e-4,
                     help='Learning rate of the classifier, default is 2e-4.')
 
@@ -413,12 +424,13 @@ def save_reference(ref_hlf, fname):
 
 def plot_histograms(hlf_class, reference_class, arg):
     """ plots histograms based with reference file as comparison """
-    plot_Etot_Einc(hlf_class, reference_class, arg)
-    plot_E_layers(hlf_class, reference_class, arg)
-    plot_ECEtas(hlf_class, reference_class, arg)
-    plot_ECPhis(hlf_class, reference_class, arg)
-    plot_ECWidthEtas(hlf_class, reference_class, arg)
-    plot_ECWidthPhis(hlf_class, reference_class, arg)
+    SetStyle()
+    plot_Etot_Einc(hlf_class, reference_class, arg, ratio = arg.ratio)
+    plot_E_layers(hlf_class, reference_class, arg, ratio = arg.ratio)
+    plot_ECEtas(hlf_class, reference_class, arg, ratio = arg.ratio)
+    plot_ECPhis(hlf_class, reference_class, arg, ratio = arg.ratio)
+    plot_ECWidthEtas(hlf_class, reference_class, arg, ratio = arg.ratio)
+    plot_ECWidthPhis(hlf_class, reference_class, arg, ratio = arg.ratio)
     if arg.dataset[0] == '1':
         plot_Etot_Einc_discrete(hlf_class, reference_class, arg)
 
@@ -478,8 +490,8 @@ if __name__ == '__main__':
         print("Plotting average shower...")
         hlf.DrawAverageShower(shower,
                               filename=os.path.join(args.output_dir,
-                                                    'average_shower_dataset_{}.png'.format(
-                                                        args.dataset)),
+                                                    'average_shower_dataset_{}.{}'.format(
+                                                        args.dataset, plt_ext)),
                               title="Shower average")
         if hasattr(reference_hlf, 'avg_shower'):
             pass
@@ -490,8 +502,8 @@ if __name__ == '__main__':
         hlf.DrawAverageShower(reference_hlf.avg_shower,
                               filename=os.path.join(
                                   args.output_dir,
-                                  'reference_average_shower_dataset_{}.png'.format(
-                                      args.dataset)),
+                                  'reference_average_shower_dataset_{}.{}'.format(
+                                      args.dataset, plt_ext)),
                               title="Shower average reference dataset")
         print("Plotting average shower: DONE.\n")
 
@@ -506,8 +518,8 @@ if __name__ == '__main__':
             for i in range(3, 7):
                 plot_title.append('shower average for E in [{}, {}] MeV'.format(10**i, 10**(i+1)))
         for i in range(len(target_energies)-1):
-            filename = 'average_shower_dataset_{}_E_{}.png'.format(args.dataset,
-                                                                   target_energies[i])
+            filename = 'average_shower_dataset_{}_E_{}.{}'.format(args.dataset,
+                                                                   target_energies[i], plt_ext)
             which_showers = ((energy >= target_energies[i]) & \
                              (energy < target_energies[i+1])).squeeze()
             hlf.DrawAverageShower(shower[which_showers],
@@ -568,7 +580,7 @@ if __name__ == '__main__':
 
         print("Calculating high-level features for classifer: DONE.\n")
 
-        if args.mode in ['all', 'cls-low']:
+        if args.mode in ['cls-low']:
             source_array = prepare_low_data_for_classifier(source_file, hlf, 0.,
                                                            normed=False)
             reference_array = prepare_low_data_for_classifier(reference_file, reference_hlf, 1.,
@@ -578,7 +590,7 @@ if __name__ == '__main__':
                                                            normed=True)
             reference_array = prepare_low_data_for_classifier(reference_file, reference_hlf, 1.,
                                                               normed=True)
-        elif args.mode in ['cls-high']:
+        elif args.mode in ['all', 'cls-high']:
             source_array = prepare_high_data_for_classifier(source_file, hlf, 0.)
             reference_array = prepare_high_data_for_classifier(reference_file, reference_hlf, 1.)
 
@@ -617,21 +629,51 @@ if __name__ == '__main__':
         test_dataloader = DataLoader(test_data, batch_size=args.cls_batch_size, shuffle=False)
         val_dataloader = DataLoader(val_data, batch_size=args.cls_batch_size, shuffle=False)
 
-        train_and_evaluate_cls(classifier, train_dataloader, test_dataloader, optimizer, args)
-        classifier = load_classifier(classifier, args)
+        for i in range(args.cls_n_iters):
+            train_and_evaluate_cls(classifier, train_dataloader, test_dataloader, optimizer, args)
+            classifier = load_classifier(classifier, args)
 
-        with torch.no_grad():
-            print("Now looking at independent dataset:")
-            eval_acc, eval_auc, eval_JSD = evaluate_cls(classifier, val_dataloader, args,
-                                                        final_eval=True,
-                                                        calibration_data=test_dataloader)
-        print("Final result of classifier test (AUC / JSD):")
-        print("{:.4f} / {:.4f}".format(eval_auc, eval_JSD))
-        with open(os.path.join(args.output_dir, 'classifier_{}_{}.txt'.format(args.mode,
-                                                                              args.dataset)),
-                  'a') as f:
-            f.write('Final result of classifier test (AUC / JSD):\n'+\
-                    '{:.4f} / {:.4f}\n\n'.format(eval_auc, eval_JSD))
+            with torch.no_grad():
+                print("Now looking at independent dataset:")
+                eval_acc, eval_auc, eval_JSD = evaluate_cls(classifier, val_dataloader, args,
+                                                            final_eval=True,
+                                                            calibration_data=test_dataloader)
+            print("Final result of classifier test (AUC / JSD):")
+            print("{:.4f} / {:.4f}".format(eval_auc, eval_JSD))
+            with open(os.path.join(args.output_dir, 'classifier_{}_{}.txt'.format(args.mode,
+                                                                                  args.dataset)),
+                      'a') as f:
+                f.write('Final result of classifier test (AUC / JSD):\n'+\
+                        '{:.4f} / {:.4f}\n\n'.format(eval_auc, eval_JSD))
+
+    if args.mode in ['all', 'fpd', 'kpd']:
+
+        print("Calculating high-level features for FPD/KPD ...")
+        hlf.CalculateFeatures(shower)
+        hlf.Einc = energy
+
+        if reference_hlf.E_tot is None:
+            reference_hlf.CalculateFeatures(reference_shower)
+            save_reference(reference_hlf,
+                           os.path.join(args.source_dir, args.reference_file_name + '.pkl'))
+
+        print("Calculating high-level features for FPD/KPD: DONE.\n")
+
+        # get high level features and remove class label
+        source_array = prepare_high_data_for_classifier(source_file, hlf, 0.)[:, :-1]
+        reference_array = prepare_high_data_for_classifier(reference_file, reference_hlf, 1.)[:, :-1]
+
+        fpd_val, fpd_err = jetnet.evaluation.fpd(reference_array, source_array)
+        kpd_val, kpd_err = jetnet.evaluation.kpd(reference_array, source_array)
+
+        result_str = (
+            f"FPD (x10^3): {fpd_val*1e3:.4f} ± {fpd_err*1e3:.4f}\n" 
+            f"KPD (x10^3): {kpd_val*1e3:.4f} ± {kpd_err*1e3:.4f}"
+        )
+
+        print(result_str)
+        with open(os.path.join(args.output_dir, 'fpd_kpd_{}.txt'.format(args.dataset)), 'w') as f:
+            f.write(result_str)
 
 
 

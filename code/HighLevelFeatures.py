@@ -10,7 +10,9 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm as LN
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-
+import sys
+#sys.path.append((os.path.dirname(__file__)))
+#from .XMLHandler import XMLHandler
 from XMLHandler import XMLHandler
 
 class HighLevelFeatures:
@@ -220,6 +222,7 @@ class HighLevelFeatures:
 
     def DrawAverageShower(self, data, filename=None, title=None):
         """ plots average of provided showers """
+        if(len(data) == 0): return
         self._DrawShower(data.mean(axis=0), filename=filename, title=title)
 
     def DrawSingleShower(self, data, filename=None, title=None):
