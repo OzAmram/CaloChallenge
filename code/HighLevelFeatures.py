@@ -137,8 +137,10 @@ class HighLevelFeatures:
         #return fig
 
     def _DrawShower(self, data, filename, title):
-        vmax = data.max()
-        vmin = 1e-3 if data.max() >= 1 else data.max()/1000.
+        #vmax = data.max()
+        #vmin = 1e-3 if data.max() >= 1 else data.max()/1000.
+        vmax = 5506
+        vmin = 1e-3 
 
         """ Draws the shower in all layers """
         if self.particle == 'electron':

@@ -124,7 +124,7 @@ parser.add_argument('--cls_n_hidden', type=int, default='2048',
 parser.add_argument('--cls_dropout_probability', type=float, default=0.2,
                     help='Dropout probability of the classifier, default is 0.2')
 
-parser.add_argument('--cls_batch_size', type=int, default=200,
+parser.add_argument('--cls_batch_size', type=int, default=1000,
                     help='Classifier batch size, default is 200.')
 parser.add_argument('--cls_n_epochs', type=int, default=50,
                     help='Number of epochs to train classifier, default is 100.')
